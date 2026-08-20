@@ -1,0 +1,13 @@
+{
+  "name": "cache-continuity",
+  "description": "Surfaces significant changes in prompt-cache reuse without assuming they are waste.",
+  "version": "0.2.0",
+  "author": {
+    "name": "karolmckgh",
+    "url": "https://github.com/karolmckgh"
+  },
+  "repository": "https://github.com/karolmckgh/github-copilot-token-optimization",
+  "license": "MIT",
+  "keywords": ["cache", "tokens", "cost", "copilot-cli"],
+  "extensions": "extensions"
+}

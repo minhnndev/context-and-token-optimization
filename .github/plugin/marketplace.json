@@ -1,0 +1,25 @@
+{
+  "name": "token-optimization-workshop",
+  "owner": {
+    "name": "karolmckgh"
+  },
+  "metadata": {
+    "description": "Installable plugins for the GitHub Copilot token optimization workshop.",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "cache-continuity",
+      "description": "Surfaces significant changes in prompt-cache reuse without assuming they are waste.",
+      "version": "0.2.0",
+      "source": "plugins/cache-continuity",
+      "author": {
+        "name": "karolmckgh",
+        "url": "https://github.com/karolmckgh"
+      },
+      "repository": "https://github.com/karolmckgh/github-copilot-token-optimization",
+      "license": "MIT",
+      "keywords": ["cache", "tokens", "cost", "copilot-cli"]
+    }
+  ]
+}

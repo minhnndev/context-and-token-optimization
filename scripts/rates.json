@@ -1,0 +1,13 @@
+{
+  "creditUsd": 0.01,
+  "autoDiscount": 0.9,
+  "models": {
+    "claude-sonnet-4.5": { "inPer1M": 3.0, "outPer1M": 15.0, "cachedInPer1M": 0.3, "cacheWritePer1M": 3.75 },
+    "opus-class": { "inPer1M": 5.0, "outPer1M": 25.0, "cachedInPer1M": 0.5, "cacheWritePer1M": 6.25 },
+    "gpt-5.4": { "inPer1M": 2.5, "outPer1M": 15.0, "cachedInPer1M": 0.25 },
+    "gemini-3.1-pro": { "inPer1M": 2.0, "outPer1M": 12.0, "cachedInPer1M": 0.2 }
+  },
+  "verifiedAgainstDocs": "2026-07-12",
+  "source": "https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing",
+  "note": "Single source of truth for model rates in this repo. cachedInPer1M = cache reads; cacheWritePer1M = cache writes (documented for Anthropic models only). Rates are volatile — re-verify against the source the week of the workshop."
+}

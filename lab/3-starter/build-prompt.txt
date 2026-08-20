@@ -1,0 +1,55 @@
+Build the live cache TTL clock for Lab 3 without changing the existing
+per-turn cache notifier.
+
+First read lab/3-starter/cache-clock.tests.mjs and treat it as the executable
+contract. Do not change that file.
+
+Create plugins/cache-continuity/lib/cache-clock.mjs, then wire it into
+plugins/cache-continuity/extensions/cache-continuity-notifier/extension.mjs.
+
+Use this exact wiring map:
+- Import createCacheClock and createCacheClockTurnGate from
+  ../../lib/cache-clock.mjs. Keep the existing notifier imports from
+  ../../lib/cache-continuity.mjs; do not move or re-export the clock there.
+- Create one clock after joinSession. Its emit function calls session.log with
+  level: 'info' and ephemeral: true.
+- Create one clock turn gate around that clock.
+- In the existing assistant.turn_start listener, keep turnEntry.start and also
+  call the clock gate's start with event.agentId.
+- On session.usage_checkpoint, pass event.data to the clock.
+- On both session.idle and assistant.idle, pass event.agentId to the clock
+  gate's idle method.
+
+Runtime facts for Copilot CLI (verified on 1.0.76-5):
+- session.usage_checkpoint.data.modelCacheState is an array.
+- Each valid entry has modelId, cacheExpiresAt, and cacheTtlSeconds.
+- These cache fields exist at runtime but are absent from the generated SDK
+  typings, so validate them defensively.
+
+Required behavior:
+- Show the CLI-reported time remaining for at most the two most recently
+  refreshed models.
+- Derive each refresh time as
+  Date.parse(cacheExpiresAt) - cacheTtlSeconds * 1000, then sort refresh times
+  descending. Use refresh time only for ordering; it will normally be in the
+  past. An entry remains live while cacheExpiresAt is later than now. Do not
+  sort by expiry or TTL alone.
+- Emit `Cache TTL: MODEL MM:SS` after one idle second, then every second.
+- Append `live preview paused` to tick 10 and schedule nothing else.
+- Cancel immediately when a main-agent turn starts.
+- Restart on the first main-agent session.idle or assistant.idle event.
+- Ignore subagent turn and idle events.
+- Use recursive timeouts and serialize asynchronous timeline writes across
+  cancelled and restarted previews.
+- Ignore malformed and expired cache entries; never invent a TTL.
+- Log ticks with session.log at info level and ephemeral: true.
+- Keep the implementation zero-dependency and preserve all existing notifier
+  output.
+- The tests load the completed extension against a mock SDK session. Green
+  clock unit tests without valid extension imports and event wiring are not
+  sufficient.
+
+Change only the new clock module and the existing extension wiring. Do not
+create plans, notes, documentation, or any other files. Run:
+
+node --test lab/3-starter/cache-clock.tests.mjs plugins/cache-continuity/test/cache-continuity.test.mjs

@@ -1,0 +1,52 @@
+name: AI-sized task
+description: A task sized in AI credits before work starts (workshop sizing prototype)
+labels: ["ai-sized"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Size the AI spend for this task **before** starting work, like story points.
+        Rubric: [docs/sizing-rubric.md](../../blob/main/docs/sizing-rubric.md). When the task is done, record actuals with `node scripts/record-usage.mjs --issue <this issue>`.
+  - type: textarea
+    id: description
+    attributes:
+      label: Task description
+      description: What needs to be done? Name files/areas if known — specificity lowers cost.
+      placeholder: e.g. Fix the date parser in sample-app/src/parse.mjs so ISO week dates are accepted, and add a test.
+    validations:
+      required: true
+  - type: dropdown
+    id: ai-credit-size
+    attributes:
+      label: AI credit size
+      description: Estimated AI-credit spend to complete this task with Copilot CLI (1 credit = $0.01).
+      options:
+        - XS — up to 10 credits
+        - S — 11–30 credits
+        - M — 31–75 credits
+        - L — 76–150 credits
+        - XL — over 150 credits (consider splitting the task)
+    validations:
+      required: true
+  - type: dropdown
+    id: planned-model
+    attributes:
+      label: Planned model
+      description: Which model do you plan to use? Auto applies a 10% discount.
+      options:
+        - auto (10% discount)
+        - claude-sonnet-4.5
+        - gpt-5.4
+        - gemini-3.1-pro
+        - opus-class
+      default: 0
+    validations:
+      required: false
+  - type: textarea
+    id: sizing-rationale
+    attributes:
+      label: Sizing rationale
+      description: Why this bucket? Scope touched, files involved, iteration risk, unknowns.
+      placeholder: e.g. Single named file, clear repro, one test cycle expected → XS.
+    validations:
+      required: false

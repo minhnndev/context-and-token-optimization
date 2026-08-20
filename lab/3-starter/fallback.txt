@@ -1,0 +1,5 @@
+If cache-clock.mjs is missing or the tests are still red after four minutes:
+
+git fetch https://github.com/karolmckgh/github-copilot-token-optimization.git solutions
+git restore --source FETCH_HEAD --worktree -- plugins/cache-continuity/lib/cache-clock.mjs plugins/cache-continuity/extensions/cache-continuity-notifier/extension.mjs
+node --test lab/3-starter/cache-clock.tests.mjs plugins/cache-continuity/test/cache-continuity.test.mjs
