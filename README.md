@@ -12,8 +12,8 @@ The labs create issues, label them and comment on them, so you need your own cop
 
 In your browser, sign in to github.com as the **private account provided at registration**, not your enterprise identity — whatever you create belongs to whoever is signed in. Then:
 
-1. Open **[the workshop template](https://github.com/hackathon-purple-horse-4/github-copilot-token-optimization/generate)**.
-2. Owner **hackathon-purple-horse-4**, name it after your username, then **Create repository**.
+1. Open **[the workshop template](https://github.com/hackathon-pink-wolf-47/context-and-token-optimization/generate)**.
+2. Owner **hackathon-pink-wolf-47**, name it after your username, then **Create repository**.
 
 Page 404s or the owner list is empty? You are signed in as the wrong account, or your org invite is still pending — check your registration email, or raise a hand.
 
