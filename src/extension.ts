@@ -9,7 +9,6 @@ import { LiveUsageService } from './services/liveUsageService';
 import { LocalStore } from './services/localStore';
 import { Dashboard } from './views/dashboard';
 import { HistoryTreeProvider, SessionTreeProvider, TaskTreeProvider } from './views/treeProviders';
-import { UsagePopup } from './views/usagePopup';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -34,9 +33,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const live = new LiveUsageService(session, store);
   const creditUsd = () => getSetting('creditUsd', 0.01);
   const dashboard = new Dashboard(store, live, creditUsd);
-  const usagePopup = new UsagePopup(store, live, creditUsd);
   const appStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 91);
-  appStatus.command = 'tokenLens.showUsagePopup';
+  appStatus.command = 'tokenLens.openMetrics';
   appStatus.name = 'TokenLens';
   appStatus.show();
 
@@ -55,7 +53,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     live,
     dashboard,
-    usagePopup,
     appStatus,
     vscode.window.registerTreeDataProvider('tokenLens.session', sessionTree),
     vscode.window.registerTreeDataProvider('tokenLens.task', taskTree),
@@ -71,8 +68,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await vscode.window.showWarningMessage(`TokenLens: ${live.state.error}`);
       }
     }),
-    vscode.commands.registerCommand('tokenLens.showUsagePopup', () => usagePopup.show()),
-    vscode.commands.registerCommand('tokenLens.showDashboard', () => dashboard.show()),
+    vscode.commands.registerCommand('tokenLens.openMetrics', () => dashboard.show()),
+    vscode.commands.registerCommand('tokenLens.openHistory', async () => {
+      await vscode.commands.executeCommand('workbench.view.extension.tokenLens');
+      await vscode.commands.executeCommand('tokenLens.history.focus');
+    }),
     vscode.commands.registerCommand('tokenLens.openSettings', () =>
       vscode.commands.executeCommand('workbench.action.openSettings', '@ext:minhnndev.tokenlens-for-copilot')),
     ...registerLegacyCommandAliases(),
@@ -98,35 +98,67 @@ function updateStatus(
 ): void {
   const usage = live.state.snapshot;
   if (usage) {
-    status.text = `$(sparkle) AI - ${usage.credits.toFixed(1)} cr`;
-    const cache = usage.totals.input > 0 ? Math.round(usage.totals.cached / usage.totals.input * 100) : null;
+    status.text = `$(zap) AI · ${usage.credits.toFixed(1)} cr`;
+    const latestCache = live.state.latestCache;
+    const sessionReuse = usage.totals.input > 0 ? usage.totals.cached / usage.totals.input : null;
+    const currentReuse = latestCache?.reuseRate ?? sessionReuse;
+    const currentInput = latestCache?.inputTokens ?? usage.totals.input;
+    const currentCached = latestCache?.cacheReadTokens ?? usage.totals.cached;
     const requests = usage.perModel.reduce((sum, model) => sum + model.requests, 0);
     const models = usage.perModel.map((model) => `${model.model} (${model.requests})`).join(', ') || 'No model usage yet';
     const tooltip = new vscode.MarkdownString();
+    configureTooltip(tooltip);
     tooltip.appendMarkdown('**TokenLens live usage**\n\n');
-    tooltip.appendMarkdown(`${activeTask ? 'Current task' : 'Current Copilot CLI session'}\n\n`);
+    tooltip.appendMarkdown('**Current cache reuse**\n\n');
+    tooltip.appendMarkdown(`\`${cacheBar(currentReuse)} ${formatPercentage(currentReuse)}\`\n\n`);
+    tooltip.appendMarkdown(`${formatTokens(currentCached ?? 0)} / ${formatTokens(currentInput ?? 0)} tokens reused\n\n`);
+    if (latestCache) {
+      tooltip.appendMarkdown('**Current configuration**\n\n');
+      tooltip.appendMarkdown(`${escapeMarkdown(latestCache.model)} · ${escapeMarkdown(formatReasoning(latestCache.reasoningEffort))}\n\n`);
+      tooltip.appendMarkdown(`${escapeMarkdown(formatTransition(latestCache.transition))}\n\n`);
+      if (latestCache.cacheDelta != null) {
+        tooltip.appendMarkdown(`**Last cache change:** ${formatSignedTokens(latestCache.cacheDelta)}\n\n`);
+      }
+    }
+    tooltip.appendMarkdown(`**${activeTask ? 'Current task' : 'Session'} totals**\n\n`);
     tooltip.appendMarkdown('| Metric | Value |\n|---|---:|\n');
     tooltip.appendMarkdown(`| AI credits | **${usage.credits.toFixed(1)} cr** |\n`);
     tooltip.appendMarkdown(`| Estimated cost | **$${(usage.credits * creditUsd).toFixed(2)}** |\n`);
-    tooltip.appendMarkdown(`| Input | ${formatTokens(usage.totals.input)} |\n`);
-    tooltip.appendMarkdown(`| Cached | ${formatTokens(usage.totals.cached)} (${cache == null ? 'n/a' : `${cache}%`}) |\n`);
-    tooltip.appendMarkdown(`| Output | ${formatTokens(usage.totals.output)} |\n`);
-    tooltip.appendMarkdown(`| Model requests | ${requests} |\n\n`);
+    tooltip.appendMarkdown(`| Turns / requests | ${requests} |\n`);
+    tooltip.appendMarkdown(`| Total input | ${formatTokens(usage.totals.input)} |\n`);
+    tooltip.appendMarkdown(`| Total cached | ${formatTokens(usage.totals.cached)} |\n`);
+    tooltip.appendMarkdown(`| Average reuse | ${formatPercentage(sessionReuse)} |\n`);
+    tooltip.appendMarkdown(`| Total output | ${formatTokens(usage.totals.output)} |\n\n`);
     tooltip.appendMarkdown(`**Models:** ${escapeMarkdown(models)}\n\n`);
-    tooltip.appendMarkdown('_Click the status item to open the interactive popup._');
+    tooltip.appendMarkdown(
+      '[$(graph-line) Open Metrics](command:tokenLens.openMetrics)  ' +
+      '[$(history) View History](command:tokenLens.openHistory)  ' +
+      '[$(refresh) Refresh](command:tokenLens.refreshUsage)\n\n',
+    );
+    tooltip.appendMarkdown('_Click the status item to open Metrics._');
     status.tooltip = tooltip;
     status.backgroundColor = undefined;
   } else if (live.state.error) {
-    status.text = '$(sparkle) AI - —';
+    status.text = '$(zap) AI · —';
     const tooltip = new vscode.MarkdownString();
+    configureTooltip(tooltip);
     tooltip.appendMarkdown('**TokenLens usage unavailable**\n\n');
     tooltip.appendText(live.state.error);
-    tooltip.appendMarkdown('\n\n_Click to open the TokenLens popup._');
+    tooltip.appendMarkdown(
+      '\n\n[$(refresh) Refresh](command:tokenLens.refreshUsage)  ' +
+      '[$(graph-line) Open Metrics](command:tokenLens.openMetrics)',
+    );
     status.tooltip = tooltip;
     status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
   } else {
-    status.text = '$(sparkle) AI - …';
-    status.tooltip = new vscode.MarkdownString('**TokenLens**\n\nReading Copilot CLI usage…\n\n_Click to open the popup._');
+    status.text = '$(zap) AI · …';
+    const tooltip = new vscode.MarkdownString('**TokenLens**\n\nReading Copilot CLI usage…\n\n');
+    configureTooltip(tooltip);
+    tooltip.appendMarkdown(
+      '[$(refresh) Refresh](command:tokenLens.refreshUsage)  ' +
+      '[$(graph-line) Open Metrics](command:tokenLens.openMetrics)',
+    );
+    status.tooltip = tooltip;
   }
 }
 
@@ -136,8 +168,38 @@ function formatTokens(value: number): string {
   return value.toLocaleString('en-US');
 }
 
+function formatSignedTokens(value: number): string {
+  return `${value >= 0 ? '+' : '-'}${formatTokens(Math.abs(value))} cached tokens`;
+}
+
+function formatPercentage(value: number | null): string {
+  return value == null ? 'n/a' : `${Math.round(value * 100)}%`;
+}
+
+function cacheBar(value: number | null, width = 20): string {
+  if (value == null) return '░'.repeat(width);
+  const filled = Math.max(0, Math.min(width, Math.round(value * width)));
+  return `${'█'.repeat(filled)}${'░'.repeat(width - filled)}`;
+}
+
+function formatReasoning(value: string): string {
+  if (!value || value === 'unavailable') return 'Reasoning unavailable';
+  return `${value[0].toUpperCase()}${value.slice(1)} reasoning`;
+}
+
+function formatTransition(value: string): string {
+  return `${value[0].toUpperCase()}${value.slice(1)}`;
+}
+
 function escapeMarkdown(value: string): string {
   return value.replace(/[\\`*_{}[\]()#+.!|>-]/g, '\\$&');
+}
+
+function configureTooltip(tooltip: vscode.MarkdownString): void {
+  tooltip.supportThemeIcons = true;
+  tooltip.isTrusted = {
+    enabledCommands: ['tokenLens.openMetrics', 'tokenLens.openHistory', 'tokenLens.refreshUsage'],
+  };
 }
 
 function workspaceKey(uri: vscode.Uri): string {
@@ -145,12 +207,20 @@ function workspaceKey(uri: vscode.Uri): string {
 }
 
 function registerLegacyCommandAliases(): vscode.Disposable[] {
-  const aliases = [
-    'startTask', 'estimateTask', 'completeTask', 'syncTask',
-    'refreshUsage', 'showUsagePopup', 'showDashboard', 'openSettings',
+  const aliases: Array<[string, string]> = [
+    ['tokenOptimization.startTask', 'tokenLens.startTask'],
+    ['tokenOptimization.estimateTask', 'tokenLens.estimateTask'],
+    ['tokenOptimization.completeTask', 'tokenLens.completeTask'],
+    ['tokenOptimization.syncTask', 'tokenLens.syncTask'],
+    ['tokenOptimization.refreshUsage', 'tokenLens.refreshUsage'],
+    ['tokenOptimization.openSettings', 'tokenLens.openSettings'],
+    ['tokenOptimization.showUsagePopup', 'tokenLens.openMetrics'],
+    ['tokenOptimization.showDashboard', 'tokenLens.openMetrics'],
+    ['tokenLens.showUsagePopup', 'tokenLens.openMetrics'],
+    ['tokenLens.showDashboard', 'tokenLens.openMetrics'],
   ];
-  return aliases.map((name) => vscode.commands.registerCommand(
-    `tokenOptimization.${name}`,
-    (...args: unknown[]) => vscode.commands.executeCommand(`tokenLens.${name}`, ...args),
+  return aliases.map(([legacy, current]) => vscode.commands.registerCommand(
+    legacy,
+    (...args: unknown[]) => vscode.commands.executeCommand(current, ...args),
   ));
 }

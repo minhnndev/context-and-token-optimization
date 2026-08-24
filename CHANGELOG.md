@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Replaced the Quick Pick usage popup with a native Rich Status Bar Hover.
+- Added trusted Codicon command links for Metrics, History, and Refresh.
+- Made the status item open the Metrics Webview directly.
+- Removed the obsolete popup runtime while preserving its old command IDs as compatibility aliases.
+
 ## 0.2.0
 
 - Renamed the extension to TokenLens for GitHub Copilot.

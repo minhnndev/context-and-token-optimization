@@ -6,8 +6,8 @@ The repository still contains the original workshop CLI and cache-continuity plu
 
 ## MVP
 
-- A compact Copilot-style status-bar popup for live credits, cost, tokens, cache reuse, requests, models, and the current task.
-- A metrics action inside the popup for opening the full analytics dashboard.
+- A native rich status hover for live credits, cost, tokens, cache reuse, requests, models, and configuration transitions.
+- Clickable hover actions for Metrics, History, and Refresh.
 - Task estimates from the description, current Git scope, and locally recorded analogues.
 - Cache continuity notifications for model/configuration transitions and significant cache-read deltas.
 - Local task history and per-bucket calibration accuracy.
@@ -23,7 +23,7 @@ The repository still contains the original workshop CLI and cache-continuity plu
 5. Run **TokenLens: Complete Task** to record actual usage and the final Git scope locally.
 6. Choose **Sync to GitHub** when you want to create/link an issue and publish calibration data.
 
-The status bar keeps the live total visible as **$(sparkle) AI - 23.4 cr**. Hover it to see a rich summary of cost, tokens, cache reuse, requests, and models. Click it to open the interactive popup; the **$(graph) Open detailed metrics** row inside that popup opens the full dashboard. The dashboard is also available from the TokenLens Activity Bar or **TokenLens: Open Metrics Dashboard**.
+The status bar keeps the live total visible as **$(zap) AI · 23.4 cr**. Hover it to see current-turn cache reuse, reused tokens, model/configuration transition, last cache delta, cost, session turns, totals, and average reuse. The hover contains clickable **$(graph-line) Open Metrics**, **$(history) View History**, and **$(refresh) Refresh** command links. Clicking the status item itself opens the Metrics Webview.
 
 ## Live usage provider
 
@@ -85,7 +85,7 @@ npm run package
 Install the resulting development build with:
 
 ```bash
-code --install-extension tokenlens-for-copilot-0.2.0.vsix
+code --install-extension tokenlens-for-copilot-0.3.0.vsix
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host. Useful commands:
@@ -95,8 +95,8 @@ TokenLens: Start Task
 TokenLens: Estimate Task
 TokenLens: Complete Task
 TokenLens: Refresh Usage
-TokenLens: Show Usage Popup
-TokenLens: Open Metrics Dashboard
+TokenLens: Open Metrics
+TokenLens: View History
 TokenLens: Sync Task to GitHub
 ```
 

@@ -2,7 +2,7 @@
   "name": "tokenlens-for-copilot",
   "displayName": "TokenLens for GitHub Copilot",
   "description": "Local-first AI credit sizing, Copilot CLI usage, cache continuity, and GitHub calibration for VS Code.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "minhnndev",
   "license": "MIT",
   "repository": {
@@ -42,7 +42,8 @@
   ],
   "main": "./dist/extension.js",
   "scripts": {
-    "compile": "tsc -p ./",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "compile": "npm run clean && tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "tsc -p ./ --noEmit",
     "test:core": "npm run compile && node --test dist/test/*.test.js",
@@ -74,14 +75,14 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "tokenLens.showUsagePopup",
-        "title": "TokenLens: Show Usage Popup",
-        "icon": "$(sparkle)"
+        "command": "tokenLens.openMetrics",
+        "title": "TokenLens: Open Metrics",
+        "icon": "$(graph-line)"
       },
       {
-        "command": "tokenLens.showDashboard",
-        "title": "TokenLens: Open Metrics Dashboard",
-        "icon": "$(graph)"
+        "command": "tokenLens.openHistory",
+        "title": "TokenLens: View History",
+        "icon": "$(history)"
       },
       {
         "command": "tokenLens.syncTask",
@@ -136,7 +137,7 @@
     "menus": {
       "view/title": [
         {
-          "command": "tokenLens.showDashboard",
+          "command": "tokenLens.openMetrics",
           "when": "viewContainer == tokenLens",
           "group": "navigation@1"
         },
