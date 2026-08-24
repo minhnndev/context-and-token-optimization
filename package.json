@@ -1,0 +1,192 @@
+{
+  "name": "token-optimization",
+  "displayName": "Token Optimization for GitHub Copilot",
+  "description": "Local-first AI credit sizing, Copilot CLI usage, cache continuity, and GitHub calibration for VS Code.",
+  "version": "0.1.0",
+  "publisher": "token-optimization",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hackathon-pink-wolf-47/context-and-token-optimization.git"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The extension reads Git metadata and the local Copilot CLI session store."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "A filesystem-backed Git workspace is required."
+    }
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "copilot",
+    "tokens",
+    "cost",
+    "cache",
+    "github"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "tsc -p ./ --noEmit",
+    "test:core": "npm run compile && node --test dist/test/*.test.js",
+    "test:legacy": "node --test scripts/test/*.test.mjs plugins/cache-continuity/test/*.test.mjs console/test/*.test.mjs",
+    "test": "npm run test:core && npm run test:legacy",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "npm run compile"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "tokenOptimization.startTask",
+        "title": "Token Optimization: Start Task",
+        "icon": "$(play)"
+      },
+      {
+        "command": "tokenOptimization.estimateTask",
+        "title": "Token Optimization: Estimate Task",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "tokenOptimization.completeTask",
+        "title": "Token Optimization: Complete Task",
+        "icon": "$(pass-filled)"
+      },
+      {
+        "command": "tokenOptimization.refreshUsage",
+        "title": "Token Optimization: Refresh Usage",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "tokenOptimization.showDashboard",
+        "title": "Token Optimization: Show Dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "tokenOptimization.syncTask",
+        "title": "Token Optimization: Sync Task to GitHub",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "tokenOptimization.openSettings",
+        "title": "Token Optimization: Open Settings",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tokenOptimization",
+          "title": "Token Optimization",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "tokenOptimization": [
+        {
+          "id": "tokenOptimization.session",
+          "name": "Current Session"
+        },
+        {
+          "id": "tokenOptimization.task",
+          "name": "Current Task"
+        },
+        {
+          "id": "tokenOptimization.history",
+          "name": "History"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "tokenOptimization.session",
+        "contents": "No Copilot CLI usage found for this workspace.\n[Refresh usage](command:tokenOptimization.refreshUsage)"
+      },
+      {
+        "view": "tokenOptimization.task",
+        "contents": "No active task.\n[Start a task](command:tokenOptimization.startTask)\n[Estimate without starting](command:tokenOptimization.estimateTask)"
+      },
+      {
+        "view": "tokenOptimization.history",
+        "contents": "Completed tasks stay local until you choose to sync them."
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tokenOptimization.showDashboard",
+          "when": "viewContainer == tokenOptimization",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tokenOptimization.refreshUsage",
+          "when": "view == tokenOptimization.session",
+          "group": "navigation@2"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "tokenOptimization.estimateTask",
+          "group": "navigation@20"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Token Optimization",
+      "properties": {
+        "tokenOptimization.creditUsd": {
+          "type": "number",
+          "default": 0.01,
+          "minimum": 0,
+          "description": "USD value of one AI credit. Used for display only when the provider already reports credits."
+        },
+        "tokenOptimization.pollIntervalSeconds": {
+          "type": "number",
+          "default": 5,
+          "minimum": 2,
+          "maximum": 300,
+          "description": "How often to read new Copilot CLI usage events."
+        },
+        "tokenOptimization.cacheNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Notify when cache reuse changes significantly or the model configuration changes."
+        },
+        "tokenOptimization.significantCacheDeltaTokens": {
+          "type": "number",
+          "default": 4096,
+          "minimum": 0,
+          "description": "Absolute cache-read token change that counts as significant."
+        },
+        "tokenOptimization.githubApiBaseUrl": {
+          "type": "string",
+          "default": "https://api.github.com",
+          "description": "GitHub REST API base URL. GitHub Enterprise authentication is not yet supported by the MVP."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.101.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.8.3"
+  }
+}

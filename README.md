@@ -1,74 +1,126 @@
-# Lab 0 · Get set up
+# Token Optimization for GitHub Copilot
 
-Two things: make your own copy of the workshop repo, then open Copilot CLI in it.
+Token Optimization is a local-first VS Code extension for estimating AI task size, monitoring Copilot CLI usage, surfacing cache continuity, and calibrating estimates against completed work.
 
-**You're done when:** the Copilot CLI prompt is open in your own repo and `/usage` responds.
+The repository still contains the original workshop CLI and cache-continuity plugin. The VS Code extension is now the primary product surface; legacy scripts remain available for workshop compatibility and share the same sizing buckets and `<!-- ai-usage {...} -->` marker contract.
 
----
+## MVP
 
-## 1 · Create your own repo from the template (don't skip this step)
+- Live AI credits, token counts, requests, models, and cache reuse in the status bar, Activity Bar, and dashboard.
+- Task estimates from the description, current Git scope, and locally recorded analogues.
+- Cache continuity notifications for model/configuration transitions and significant cache-read deltas.
+- Local task history and per-bucket calibration accuracy.
+- Explicit GitHub sync through VS Code GitHub Authentication—no mandatory `gh` CLI or PAT.
+- Backward-compatible issue comments that the existing `scripts/calibration-report.mjs` can read.
 
-The labs create issues, label them and comment on them, so you need your own copy — not this one.
+## Workflow
 
-In your browser, sign in to github.com as the **private account provided at registration**, not your enterprise identity — whatever you create belongs to whoever is signed in. Then:
+1. Open a Git workspace in VS Code.
+2. Run **Token Optimization: Start Task**.
+3. Describe the work and review the size, confidence, scope drivers, and similar completed tasks.
+4. Use Copilot normally. The extension polls the matching Copilot CLI session store read-only.
+5. Run **Token Optimization: Complete Task** to record actual usage and the final Git scope locally.
+6. Choose **Sync to GitHub** when you want to create/link an issue and publish calibration data.
 
-1. Open **[the workshop template](https://github.com/hackathon-pink-wolf-47/context-and-token-optimization/generate)**.
-2. Owner **hackathon-pink-wolf-47**, name it after your username, then **Create repository**.
+The dashboard is available from the Token Optimization Activity Bar icon, the status bar, or **Token Optimization: Show Dashboard**.
 
-Page 404s or the owner list is empty? You are signed in as the wrong account, or your org invite is still pending — check your registration email, or raise a hand.
+## Live usage provider
 
-Now open Copilot CLI in it — pick one:
+GitHub Copilot does not expose a public VS Code API that gives third-party extensions token or credit telemetry. The initial provider therefore reads the same local Copilot CLI store used by the workshop scripts:
 
-- **Copilot CLI installed on your machine?** → [Section 2](#2--local-copilot-cli)
-- **Forgot to install it, no Node 22, or your machine won't allow it?** → [Section 3](#3--github-codespaces-nothing-to-install-locally)
+```text
+~/.copilot/session-store.db
+```
 
-## 2 · Local Copilot CLI
+Requirements:
 
-Your shell needs the workshop account too — `gh auth status` must show it, otherwise `gh auth login`. When you run `gh auth login`, sign in with the GitHub username that was invited to the hackathon org.
+- Copilot CLI has run from the current repository.
+- The VS Code extension host includes `node:sqlite` (Node 22.5 or newer).
+- The Copilot CLI schema remains compatible with the fields verified by this repository.
 
-No `gh` yet? Install it — or just ask Copilot to do it for you:
+The current session-store schema exposes model and cache counters, but not reasoning-effort configuration. The cache observer therefore detects model transitions and factual cache deltas; reasoning transitions will become available when a provider can supply that field. Manual credit entry remains available from **Complete Task** if live usage cannot be read.
 
-| OS | Command |
-| --- | --- |
-| macOS | `brew install gh` |
-| Windows | `winget install --id GitHub.cli` |
+If the provider is unavailable, task estimates, Git analysis, local history, calibration, the dashboard, and GitHub issue creation remain usable. The UI reports the provider error instead of inventing usage.
 
-Then clone the repo you just created and step into it:
+The provider boundary is isolated in `src/providers/sessionProvider.ts`, so a future supported Copilot API can replace the CLI-store implementation without changing the core or UI.
+
+## Architecture
+
+```text
+src/
+├── extension.ts
+├── commands/
+│   └── taskCommands.ts
+├── core/
+│   ├── cache.ts
+│   ├── calibration.ts
+│   ├── pricing.ts
+│   ├── sizing.ts
+│   └── types.ts
+├── providers/
+│   ├── gitProvider.ts
+│   ├── githubProvider.ts
+│   └── sessionProvider.ts
+├── services/
+│   ├── liveUsageService.ts
+│   └── localStore.ts
+├── views/
+│   ├── dashboard.ts
+│   └── treeProviders.ts
+└── test/
+```
+
+Core modules do not import VS Code. Local task data is written atomically into VS Code workspace storage, not into the repository. GitHub access happens only after the user runs a sync command.
+
+## Development
 
 ```bash
-gh repo clone hackathon-purple-horse-4/<your-repo-name>
-
-cd <your-repo-name>
-copilot
+npm install
+npm run compile
+npm test
+npm run package
 ```
 
-Once the prompt is open, make sure you're on the latest version:
-
-```
-/update
-```
-
-**Use the right account.** Today runs on the **personal github.com account you provided at registration**. Inside Copilot CLI:
-
-```
-/logout
-/login
-```
-
-Follow the device-code flow in the browser and sign in with personal account that was invited to the hackathon org. Check `/usage` responds — done. Continue to [Lab 1](lab/1-size-limit-record.md).
-
-## 3 · GitHub Codespaces (nothing to install locally)
-
-On the page of the repo you created in step 1: green **Code** button → **Codespaces** tab → **Create codespace on main**.
-
-<img src="https://docs.github.com/assets/cb-49943/mw-1440/images/help/codespaces/who-will-pay.webp" alt="Code → Codespaces → Create codespace on main" width="25%">
-
-Wait for the container to build (~2 min). Then, in the codespace terminal, install the latest Copilot CLI and start it:
+Install the resulting development build with:
 
 ```bash
-curl -fsSL https://gh.io/copilot-install | sudo bash
-copilot
+code --install-extension token-optimization-0.1.0.vsix
 ```
 
-The codespace already runs as your private account — no login needed. Check `/usage` responds, then `/exit` — done. Continue to [Lab 1](lab/1-size-limit-record.md).
+Press `F5` in VS Code to launch an Extension Development Host. Useful commands:
 
+```text
+Token Optimization: Start Task
+Token Optimization: Estimate Task
+Token Optimization: Complete Task
+Token Optimization: Refresh Usage
+Token Optimization: Show Dashboard
+Token Optimization: Sync Task to GitHub
+```
+
+## Pricing
+
+The bundled `scripts/rates.json` remains the pricing source of truth for token-to-credit conversion. Live Copilot CLI monitoring uses the exact `total_nano_aiu` credits already recorded by Copilot, while the configurable `tokenOptimization.creditUsd` setting controls the dashboard's USD display.
+
+Pricing is deliberately not hard-coded into the dashboard.
+
+## GitHub compatibility
+
+Completed tasks are posted with the existing marker shape:
+
+```html
+<!-- ai-usage {"bucket":"M","actual":42.7,"verdict":"on-target"} -->
+```
+
+Additive fields include models, per-model usage, files, session ID, and timestamp. Comparison markers remain excluded by the legacy calibration reporter.
+
+## Legacy workshop
+
+The original workshop material remains in:
+
+- `lab/`
+- `scripts/`
+- `plugins/cache-continuity/`
+- `console/`
+
+The legacy CLI tests run as part of `npm test`, ensuring the extension does not silently break the workshop path.
