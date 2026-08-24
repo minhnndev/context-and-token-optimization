@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getSetting } from '../config';
 import { buildMarker } from '../core/calibration';
 import { formatRange } from '../core/sizing';
 import { GitHubLink, TaskRecord } from '../core/types';
@@ -121,8 +122,7 @@ export class GitHubProvider {
     allowNotFound = false,
   ): Promise<T | null> {
     const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: true });
-    const apiRoot = vscode.workspace.getConfiguration('tokenOptimization')
-      .get<string>('githubApiBaseUrl', 'https://api.github.com').replace(/\/$/, '');
+    const apiRoot = getSetting('githubApiBaseUrl', 'https://api.github.com').replace(/\/$/, '');
     const response = await fetch(`${apiRoot}${path}`, {
       method,
       headers: {
@@ -199,7 +199,7 @@ function buildUsageComment(task: TaskRecord): string {
     '',
     `**Tokens** ↑ ${usage.totals.input.toLocaleString('en-US')} (${usage.totals.cached.toLocaleString('en-US')} cached) · ↓ ${usage.totals.output.toLocaleString('en-US')}`,
     '',
-    `_Recorded ${task.completedAt} by Token Optimization for GitHub Copilot._`,
+    `_Recorded ${task.completedAt} by TokenLens for GitHub Copilot._`,
     '',
     marker,
   ].join('\n');

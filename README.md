@@ -1,12 +1,13 @@
-# Token Optimization for GitHub Copilot
+# TokenLens for GitHub Copilot
 
-Token Optimization is a local-first VS Code extension for estimating AI task size, monitoring Copilot CLI usage, surfacing cache continuity, and calibrating estimates against completed work.
+TokenLens is a local-first VS Code extension for estimating AI task size, monitoring Copilot CLI usage, surfacing cache continuity, and calibrating estimates against completed work.
 
 The repository still contains the original workshop CLI and cache-continuity plugin. The VS Code extension is now the primary product surface; legacy scripts remain available for workshop compatibility and share the same sizing buckets and `<!-- ai-usage {...} -->` marker contract.
 
 ## MVP
 
-- Live AI credits, token counts, requests, models, and cache reuse in the status bar, Activity Bar, and dashboard.
+- A compact Copilot-style status-bar popup for live credits, cost, tokens, cache reuse, requests, models, and the current task.
+- A metrics action inside the popup for opening the full analytics dashboard.
 - Task estimates from the description, current Git scope, and locally recorded analogues.
 - Cache continuity notifications for model/configuration transitions and significant cache-read deltas.
 - Local task history and per-bucket calibration accuracy.
@@ -16,13 +17,13 @@ The repository still contains the original workshop CLI and cache-continuity plu
 ## Workflow
 
 1. Open a Git workspace in VS Code.
-2. Run **Token Optimization: Start Task**.
+2. Run **TokenLens: Start Task**.
 3. Describe the work and review the size, confidence, scope drivers, and similar completed tasks.
 4. Use Copilot normally. The extension polls the matching Copilot CLI session store read-only.
-5. Run **Token Optimization: Complete Task** to record actual usage and the final Git scope locally.
+5. Run **TokenLens: Complete Task** to record actual usage and the final Git scope locally.
 6. Choose **Sync to GitHub** when you want to create/link an issue and publish calibration data.
 
-The dashboard is available from the Token Optimization Activity Bar icon, the status bar, or **Token Optimization: Show Dashboard**.
+The status bar keeps the live total visible as **$(sparkle) AI - 23.4 cr**. Hover it to see a rich summary of cost, tokens, cache reuse, requests, and models. Click it to open the interactive popup; the **$(graph) Open detailed metrics** row inside that popup opens the full dashboard. The dashboard is also available from the TokenLens Activity Bar or **TokenLens: Open Metrics Dashboard**.
 
 ## Live usage provider
 
@@ -84,23 +85,24 @@ npm run package
 Install the resulting development build with:
 
 ```bash
-code --install-extension token-optimization-0.1.0.vsix
+code --install-extension tokenlens-for-copilot-0.2.0.vsix
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host. Useful commands:
 
 ```text
-Token Optimization: Start Task
-Token Optimization: Estimate Task
-Token Optimization: Complete Task
-Token Optimization: Refresh Usage
-Token Optimization: Show Dashboard
-Token Optimization: Sync Task to GitHub
+TokenLens: Start Task
+TokenLens: Estimate Task
+TokenLens: Complete Task
+TokenLens: Refresh Usage
+TokenLens: Show Usage Popup
+TokenLens: Open Metrics Dashboard
+TokenLens: Sync Task to GitHub
 ```
 
 ## Pricing
 
-The bundled `scripts/rates.json` remains the pricing source of truth for token-to-credit conversion. Live Copilot CLI monitoring uses the exact `total_nano_aiu` credits already recorded by Copilot, while the configurable `tokenOptimization.creditUsd` setting controls the dashboard's USD display.
+The bundled `scripts/rates.json` remains the pricing source of truth for token-to-credit conversion. Live Copilot CLI monitoring uses the exact `total_nano_aiu` credits already recorded by Copilot, while the configurable `tokenLens.creditUsd` setting controls the dashboard's USD display.
 
 Pricing is deliberately not hard-coded into the dashboard.
 

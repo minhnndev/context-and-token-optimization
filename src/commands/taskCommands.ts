@@ -56,7 +56,7 @@ export class TaskCommands {
   async complete(): Promise<void> {
     const active = this.store.activeTask();
     if (!active) {
-      await vscode.window.showInformationMessage('Token Optimization: there is no active task.');
+      await vscode.window.showInformationMessage('TokenLens: there is no active task.');
       return;
     }
     await this.live.refresh();
@@ -127,7 +127,7 @@ export class TaskCommands {
   async sync(task?: TaskRecord): Promise<void> {
     let currentTask = task ?? this.store.activeTask() ?? this.store.mostRecentTask();
     if (!currentTask) {
-      await vscode.window.showInformationMessage('Token Optimization: there is no task to sync.');
+      await vscode.window.showInformationMessage('TokenLens: there is no task to sync.');
       return;
     }
     if (currentTask.syncedAt && currentTask.status === 'completed') {

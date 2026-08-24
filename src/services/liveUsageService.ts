@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getSetting } from '../config';
 import { CacheTurn, CacheTurnObserver, formatCacheTurn } from '../core/cache';
 import { UsageSnapshot } from '../core/types';
 import { SessionProvider } from '../providers/sessionProvider';
@@ -61,8 +62,7 @@ export class LiveUsageService implements vscode.Disposable {
   }
 
   private schedule(): void {
-    const seconds = vscode.workspace.getConfiguration('tokenOptimization')
-      .get<number>('pollIntervalSeconds', 5);
+    const seconds = getSetting('pollIntervalSeconds', 5);
     this.timer = setInterval(() => void this.refresh(), Math.max(2, seconds) * 1000);
   }
 
@@ -101,19 +101,17 @@ export class LiveUsageService implements vscode.Disposable {
   }
 
   private createObserver(): CacheTurnObserver {
-    const threshold = vscode.workspace.getConfiguration('tokenOptimization')
-      .get<number>('significantCacheDeltaTokens', 4096);
+    const threshold = getSetting('significantCacheDeltaTokens', 4096);
     return new CacheTurnObserver(threshold);
   }
 
   private async maybeNotify(turn: CacheTurn): Promise<void> {
-    const enabled = vscode.workspace.getConfiguration('tokenOptimization')
-      .get<boolean>('cacheNotifications', true);
+    const enabled = getSetting('cacheNotifications', true);
     if (!enabled || turn.transition === 'baseline') return;
     if (!turn.significant && turn.transition === 'same configuration') return;
     const severity = turn.cacheDelta != null && turn.cacheDelta < 0
       ? vscode.window.showWarningMessage
       : vscode.window.showInformationMessage;
-    await severity(`Token Optimization: ${formatCacheTurn(turn)}`);
+    await severity(`TokenLens: ${formatCacheTurn(turn)}`);
   }
 }

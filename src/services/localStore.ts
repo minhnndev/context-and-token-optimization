@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { TaskRecord } from '../core/types';
 
@@ -14,6 +14,24 @@ export class LocalStore {
   private state: StoreState = { ...EMPTY_STATE, tasks: [] };
 
   constructor(private readonly filePath: string) {}
+
+  static async migrate(legacyPaths: string[], currentPath: string): Promise<void> {
+    try {
+      await access(currentPath);
+      return;
+    } catch {
+      // No TokenLens store yet; try the legacy filename next.
+    }
+    for (const legacyPath of legacyPaths) {
+      try {
+        await mkdir(dirname(currentPath), { recursive: true });
+        await copyFile(legacyPath, currentPath);
+        return;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    }
+  }
 
   async initialize(): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });

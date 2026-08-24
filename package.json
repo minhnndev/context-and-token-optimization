@@ -1,13 +1,13 @@
 {
-  "name": "token-optimization",
-  "displayName": "Token Optimization for GitHub Copilot",
+  "name": "tokenlens-for-copilot",
+  "displayName": "TokenLens for GitHub Copilot",
   "description": "Local-first AI credit sizing, Copilot CLI usage, cache continuity, and GitHub calibration for VS Code.",
-  "version": "0.1.0",
-  "publisher": "token-optimization",
+  "version": "0.2.0",
+  "publisher": "minhnndev",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hackathon-pink-wolf-47/context-and-token-optimization.git"
+    "url": "https://github.com/minhnndev/context-and-token-optimization.git"
   },
   "extensionKind": [
     "workspace"
@@ -54,128 +54,133 @@
   "contributes": {
     "commands": [
       {
-        "command": "tokenOptimization.startTask",
-        "title": "Token Optimization: Start Task",
+        "command": "tokenLens.startTask",
+        "title": "TokenLens: Start Task",
         "icon": "$(play)"
       },
       {
-        "command": "tokenOptimization.estimateTask",
-        "title": "Token Optimization: Estimate Task",
+        "command": "tokenLens.estimateTask",
+        "title": "TokenLens: Estimate Task",
         "icon": "$(wand)"
       },
       {
-        "command": "tokenOptimization.completeTask",
-        "title": "Token Optimization: Complete Task",
+        "command": "tokenLens.completeTask",
+        "title": "TokenLens: Complete Task",
         "icon": "$(pass-filled)"
       },
       {
-        "command": "tokenOptimization.refreshUsage",
-        "title": "Token Optimization: Refresh Usage",
+        "command": "tokenLens.refreshUsage",
+        "title": "TokenLens: Refresh Usage",
         "icon": "$(refresh)"
       },
       {
-        "command": "tokenOptimization.showDashboard",
-        "title": "Token Optimization: Show Dashboard",
-        "icon": "$(dashboard)"
+        "command": "tokenLens.showUsagePopup",
+        "title": "TokenLens: Show Usage Popup",
+        "icon": "$(sparkle)"
       },
       {
-        "command": "tokenOptimization.syncTask",
-        "title": "Token Optimization: Sync Task to GitHub",
+        "command": "tokenLens.showDashboard",
+        "title": "TokenLens: Open Metrics Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "tokenLens.syncTask",
+        "title": "TokenLens: Sync Task to GitHub",
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "tokenOptimization.openSettings",
-        "title": "Token Optimization: Open Settings",
+        "command": "tokenLens.openSettings",
+        "title": "TokenLens: Open Settings",
         "icon": "$(settings-gear)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "tokenOptimization",
-          "title": "Token Optimization",
+          "id": "tokenLens",
+          "title": "TokenLens",
           "icon": "media/activity.svg"
         }
       ]
     },
     "views": {
-      "tokenOptimization": [
+      "tokenLens": [
         {
-          "id": "tokenOptimization.session",
+          "id": "tokenLens.session",
           "name": "Current Session"
         },
         {
-          "id": "tokenOptimization.task",
+          "id": "tokenLens.task",
           "name": "Current Task"
         },
         {
-          "id": "tokenOptimization.history",
+          "id": "tokenLens.history",
           "name": "History"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "tokenOptimization.session",
-        "contents": "No Copilot CLI usage found for this workspace.\n[Refresh usage](command:tokenOptimization.refreshUsage)"
+        "view": "tokenLens.session",
+        "contents": "No Copilot CLI usage found for this workspace.\n[Refresh usage](command:tokenLens.refreshUsage)"
       },
       {
-        "view": "tokenOptimization.task",
-        "contents": "No active task.\n[Start a task](command:tokenOptimization.startTask)\n[Estimate without starting](command:tokenOptimization.estimateTask)"
+        "view": "tokenLens.task",
+        "contents": "No active task.\n[Start a task](command:tokenLens.startTask)\n[Estimate without starting](command:tokenLens.estimateTask)"
       },
       {
-        "view": "tokenOptimization.history",
+        "view": "tokenLens.history",
         "contents": "Completed tasks stay local until you choose to sync them."
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "tokenOptimization.showDashboard",
-          "when": "viewContainer == tokenOptimization",
+          "command": "tokenLens.showDashboard",
+          "when": "viewContainer == tokenLens",
           "group": "navigation@1"
         },
         {
-          "command": "tokenOptimization.refreshUsage",
-          "when": "view == tokenOptimization.session",
+          "command": "tokenLens.refreshUsage",
+          "when": "view == tokenLens.session",
           "group": "navigation@2"
         }
       ],
       "explorer/context": [
         {
-          "command": "tokenOptimization.estimateTask",
+          "command": "tokenLens.estimateTask",
           "group": "navigation@20"
         }
       ]
     },
     "configuration": {
-      "title": "Token Optimization",
+      "title": "TokenLens",
       "properties": {
-        "tokenOptimization.creditUsd": {
+        "tokenLens.creditUsd": {
           "type": "number",
           "default": 0.01,
           "minimum": 0,
           "description": "USD value of one AI credit. Used for display only when the provider already reports credits."
         },
-        "tokenOptimization.pollIntervalSeconds": {
+        "tokenLens.pollIntervalSeconds": {
           "type": "number",
           "default": 5,
           "minimum": 2,
           "maximum": 300,
           "description": "How often to read new Copilot CLI usage events."
         },
-        "tokenOptimization.cacheNotifications": {
+        "tokenLens.cacheNotifications": {
           "type": "boolean",
           "default": true,
           "description": "Notify when cache reuse changes significantly or the model configuration changes."
         },
-        "tokenOptimization.significantCacheDeltaTokens": {
+        "tokenLens.significantCacheDeltaTokens": {
           "type": "number",
           "default": 4096,
           "minimum": 0,
           "description": "Absolute cache-read token change that counts as significant."
         },
-        "tokenOptimization.githubApiBaseUrl": {
+        "tokenLens.githubApiBaseUrl": {
           "type": "string",
           "default": "https://api.github.com",
           "description": "GitHub REST API base URL. GitHub Enterprise authentication is not yet supported by the MVP."

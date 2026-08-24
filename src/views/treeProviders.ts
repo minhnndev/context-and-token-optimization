@@ -49,8 +49,8 @@ export class TaskTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem
       item('Size', `${task.estimate.bucket} · ${formatRange(task.estimate.bucket)} cr`, 'symbol-ruler'),
       item('Confidence', `${Math.round(task.estimate.confidence * 100)}%`, 'graph'),
       item('Actual so far', `${(this.live.state.snapshot?.credits ?? 0).toFixed(1)} cr`, 'pulse'),
-      commandItem('Complete Task', 'tokenOptimization.completeTask', 'pass-filled'),
-      commandItem(task.github ? `Issue #${task.github.issueNumber}` : 'Sync to GitHub', 'tokenOptimization.syncTask', 'cloud-upload'),
+      commandItem('Complete Task', 'tokenLens.completeTask', 'pass-filled'),
+      commandItem(task.github ? `Issue #${task.github.issueNumber}` : 'Sync to GitHub', 'tokenLens.syncTask', 'cloud-upload'),
     ];
   }
 }

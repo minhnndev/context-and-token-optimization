@@ -24,8 +24,8 @@ export class Dashboard implements vscode.Disposable {
       return;
     }
     this.panel = vscode.window.createWebviewPanel(
-      'tokenOptimization.dashboard',
-      'Token Optimization',
+      'tokenLens.dashboard',
+      'TokenLens',
       vscode.ViewColumn.One,
       { enableScripts: true, retainContextWhenHidden: true },
     );
@@ -64,19 +64,19 @@ export class Dashboard implements vscode.Disposable {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${csp} 'unsafe-inline'; script-src 'nonce-${nonce}';">
-  <title>Token Optimization</title>
+  <title>TokenLens</title>
   <style>${styles}</style>
 </head>
 <body>
   <header>
     <div>
       <div class="eyebrow">LOCAL-FIRST AI ECONOMICS</div>
-      <h1>Token Optimization</h1>
+      <h1>TokenLens</h1>
       <p>Task sizing, live usage, cache continuity, and calibration for this workspace.</p>
     </div>
     <div class="actions">
-      <button data-command="tokenOptimization.refreshUsage">Refresh</button>
-      <button class="primary" data-command="${active ? 'tokenOptimization.completeTask' : 'tokenOptimization.startTask'}">${active ? 'Complete task' : 'Start task'}</button>
+      <button data-command="tokenLens.refreshUsage">Refresh</button>
+      <button class="primary" data-command="${active ? 'tokenLens.completeTask' : 'tokenLens.startTask'}">${active ? 'Complete task' : 'Start task'}</button>
     </div>
   </header>
 
@@ -98,7 +98,7 @@ export class Dashboard implements vscode.Disposable {
             <div class="empty-icon">◎</div>
             <h2>No active task</h2>
             <p>Start with a description; Git scope and local calibration history shape the estimate.</p>
-            <button class="primary" data-command="tokenOptimization.startTask">Start Task</button>
+            <button class="primary" data-command="tokenLens.startTask">Start Task</button>
           </div>`}
       </article>
 
@@ -163,7 +163,7 @@ function currentTask(task: TaskRecord, actual: number): string {
     <div class="estimate-line"><span class="size">${task.estimate.bucket}</span><span>${formatRange(task.estimate.bucket)} credits</span><span>${Math.round(task.estimate.confidence * 100)}% confidence</span></div>
     <div class="task-progress"><div><span>Actual so far</span><strong>${actual.toFixed(1)} cr</strong></div><div class="track large"><div class="fill task" style="width:${progress}%"></div></div></div>
     <div class="drivers">${task.estimate.drivers.slice(0, 4).map((driver) => `<span>${escapeHtml(driver)}</span>`).join('')}</div>
-    <div class="task-actions"><button data-command="tokenOptimization.syncTask">${task.github ? `Issue #${task.github.issueNumber}` : 'Create GitHub issue'}</button><button class="primary" data-command="tokenOptimization.completeTask">Complete</button></div>
+    <div class="task-actions"><button data-command="tokenLens.syncTask">${task.github ? `Issue #${task.github.issueNumber}` : 'Create GitHub issue'}</button><button class="primary" data-command="tokenLens.completeTask">Complete</button></div>
   </div>`;
 }
 
