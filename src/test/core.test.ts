@@ -72,6 +72,9 @@ test('cache observer reports factual configuration changes and significant delta
     inputTokens: 20_000, cacheReadTokens: 5_000, outputTokens: 100, credits: 1,
   });
   assert.equal(turn.transition, 'reasoning changed');
+  assert.equal(turn.previousModel, 'claude-sonnet-4.5');
+  assert.equal(turn.previousReasoningEffort, 'medium');
+  assert.equal(turn.credits, 1);
   assert.equal(turn.cacheDelta, -10_000);
   assert.equal(turn.significant, true);
   assert.match(formatCacheTurn(turn), /cache change -10,000/);

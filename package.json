@@ -2,7 +2,7 @@
   "name": "tokenlens-for-copilot",
   "displayName": "TokenLens for GitHub Copilot",
   "description": "Local-first AI credit sizing, Copilot CLI usage, cache continuity, and GitHub calibration for VS Code.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "minhnndev",
   "license": "MIT",
   "repository": {
@@ -78,6 +78,11 @@
         "command": "tokenLens.openMetrics",
         "title": "TokenLens: Open Metrics",
         "icon": "$(graph-line)"
+      },
+      {
+        "command": "tokenLens.showOptimizationTips",
+        "title": "TokenLens: Optimization Tips",
+        "icon": "$(lightbulb)"
       },
       {
         "command": "tokenLens.openHistory",

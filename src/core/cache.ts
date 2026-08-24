@@ -13,8 +13,11 @@ export type CacheTransition =
 export interface CacheTurn {
   model: string;
   reasoningEffort: string;
+  previousModel?: string;
+  previousReasoningEffort?: string;
   inputTokens: number | null;
   cacheReadTokens: number | null;
+  credits: number;
   reuseRate: number | null;
   transition: CacheTransition;
   cacheDelta: number | null;
@@ -44,8 +47,11 @@ export class CacheTurnObserver {
     const turn = {
       model,
       reasoningEffort,
+      previousModel: this.previous?.model,
+      previousReasoningEffort: this.previous?.reasoningEffort,
       inputTokens,
       cacheReadTokens,
+      credits: Number.isFinite(event.credits) && event.credits >= 0 ? event.credits : 0,
       reuseRate,
       transition,
       cacheDelta,

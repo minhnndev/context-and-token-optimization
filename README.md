@@ -6,8 +6,9 @@ The repository still contains the original workshop CLI and cache-continuity plu
 
 ## MVP
 
-- A native rich status hover for live credits, cost, tokens, cache reuse, requests, models, and configuration transitions.
-- Clickable hover actions for Metrics, History, and Refresh.
+- A native rich status hover organized around cache reuse, configuration continuity, current usage, and evidence-based optimization signals.
+- Clickable hover actions for Metrics and Optimization Tips.
+- Analyze and Optimize % cards in Metrics with an explicit cache/model-consistency formula.
 - Task estimates from the description, current Git scope, and locally recorded analogues.
 - Cache continuity notifications for model/configuration transitions and significant cache-read deltas.
 - Local task history and per-bucket calibration accuracy.
@@ -23,7 +24,7 @@ The repository still contains the original workshop CLI and cache-continuity plu
 5. Run **TokenLens: Complete Task** to record actual usage and the final Git scope locally.
 6. Choose **Sync to GitHub** when you want to create/link an issue and publish calibration data.
 
-The status bar keeps the live total visible as **$(zap) AI · 23.4 cr**. Hover it to see current-turn cache reuse, reused tokens, model/configuration transition, last cache delta, cost, session turns, totals, and average reuse. The hover contains clickable **$(graph-line) Open Metrics**, **$(history) View History**, and **$(refresh) Refresh** command links. Clicking the status item itself opens the Metrics Webview.
+The status bar keeps the live total visible as **$(pulse) AI · 23.4 cr** and changes to a warning icon when the latest request has low cache reuse or a configuration transition. Hover it for a native Markdown optimization snapshot with a rendered progress graphic, right-aligned metrics, current configuration, request-vs-average comparisons, and explicit **$(graph-line) Metrics** and **$(lightbulb) Optimization Tips** actions.
 
 ## Live usage provider
 
@@ -85,7 +86,7 @@ npm run package
 Install the resulting development build with:
 
 ```bash
-code --install-extension tokenlens-for-copilot-0.3.0.vsix
+code --install-extension tokenlens-for-copilot-0.3.1.vsix
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host. Useful commands:
@@ -96,6 +97,7 @@ TokenLens: Estimate Task
 TokenLens: Complete Task
 TokenLens: Refresh Usage
 TokenLens: Open Metrics
+TokenLens: Optimization Tips
 TokenLens: View History
 TokenLens: Sync Task to GitHub
 ```

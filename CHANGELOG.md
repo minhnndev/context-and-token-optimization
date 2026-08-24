@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- Kept the status experience as a native Markdown hover instead of using a Quick Pick for metric display.
+- Kept Metrics as an explicit action in the hover instead of navigating there implicitly.
+- Added Analyze and Optimize % cards to Metrics with cache, configuration, model-consistency, and cost-per-request signals.
+- Made Optimize % explainable: 75% cache reuse plus 25% dominant-model request share; cost remains outside the score until historical baselines exist.
+- Added evidence-based Optimization Tips for low cache reuse, configuration changes, context growth, and expensive requests.
+- Switched the native hover to Markdown tables and a rendered SVG progress bar so alignment does not depend on unsupported hover CSS.
+
 ## 0.3.0
 
 - Replaced the Quick Pick usage popup with a native Rich Status Bar Hover.
