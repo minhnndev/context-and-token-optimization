@@ -51,7 +51,7 @@ Exit the builder, update the plugin from your working tree, then start a fresh e
 ```
 
 ```bash
-copilot plugin update cache-continuity@token-optimization-workshop
+copilot plugin update cache-continuity@tokenlens-workshop
 copilot --experimental --model gpt-5.4-mini --effort low --max-ai-credits 30
 ```
 
@@ -114,7 +114,7 @@ Exit and remove the workshop plugin:
 
 ```bash
 copilot plugin uninstall cache-continuity
-copilot plugin marketplace remove token-optimization-workshop
+copilot plugin marketplace remove tokenlens-workshop
 ```
 
 Both commands remove the runtime plugin and marketplace registration. The two generated file changes remain in your working tree.
@@ -123,7 +123,7 @@ Both commands remove the runtime plugin and marketplace registration. The two ge
 
 - No clock after the repeated turn? Check `/usage`; if cached input is still zero, send the identical prompt once more.
 - Notifier starts but the clock does not? Confirm the 19 tests passed before `plugin update`, then exit and start a fresh `--experimental` process.
-- Plugin was removed after Lab 2? Run `copilot plugin marketplace add .`, then `copilot plugin install cache-continuity@token-optimization-workshop`.
+- Plugin was removed after Lab 2? Run `copilot plugin marketplace add .`, then `copilot plugin install cache-continuity@tokenlens-workshop`.
 - Never use extension reload in this lab; repeated reloads hang the runtime.
 
 **Continue:** [Lab 4 - Estimate from your own data](4-estimate-from-history.md).

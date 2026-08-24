@@ -35,8 +35,15 @@ export class TaskCommands {
     });
     if (!description) return;
     const git = await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Window, title: 'Analyzing task scope…' },
-      () => this.git.snapshot(),
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'TokenLens: Analyzing task scope…',
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: 'Reading Git changes and workspace structure' });
+        return this.git.snapshot();
+      },
     );
     const estimate = estimateTask(description.trim(), git, this.store.allTasks());
     const startLabel = 'Start Task';
@@ -200,28 +207,45 @@ export class TaskCommands {
       await vscode.window.showWarningMessage('Complete the active task before starting another one.');
       return;
     }
-    let usageBaseline;
-    try {
-      usageBaseline = await this.session.currentCursor();
-    } catch {
-      // Starting remains local-first. Live usage will become available when a compatible session appears.
-    }
-    const task: TaskRecord = {
-      id: randomUUID(),
-      description,
-      status: 'active',
-      estimate,
-      startedAt: new Date().toISOString(),
-      startGit,
-      usageBaseline,
-    };
-    await this.store.startTask(task);
-    this.live.resetCacheObserver();
-    await this.live.refresh();
-    this.changed();
-    await vscode.window.showInformationMessage(
-      `Started ${estimate.bucket} task · expected ${formatRange(estimate.bucket)} credits.`,
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'TokenLens: Starting task…',
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: 'Capturing the usage baseline', increment: 20 });
+        let usageBaseline;
+        try {
+          usageBaseline = await this.session.currentCursor();
+        } catch {
+          // Starting remains local-first. Live usage will become available when a compatible session appears.
+        }
+        const task: TaskRecord = {
+          id: randomUUID(),
+          description,
+          status: 'active',
+          estimate,
+          startedAt: new Date().toISOString(),
+          startGit,
+          usageBaseline,
+        };
+        progress.report({ message: 'Saving the active task', increment: 40 });
+        await this.store.startTask(task);
+        this.live.resetCacheObserver();
+        this.changed();
+        progress.report({ message: 'Refreshing live usage', increment: 30 });
+        await this.live.refresh();
+        this.changed();
+        progress.report({ message: 'Ready', increment: 10 });
+      },
     );
+    const openMetrics = 'Open Metrics';
+    const selection = await vscode.window.showInformationMessage(
+      `TokenLens: Task started · ${estimate.bucket} · expected ${formatRange(estimate.bucket)} credits.`,
+      openMetrics,
+    );
+    if (selection === openMetrics) await vscode.commands.executeCommand('tokenLens.openMetrics');
   }
 }
 

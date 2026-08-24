@@ -7,8 +7,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { SessionProvider } from '../providers/sessionProvider';
 
 test('session provider returns task deltas and repo-relative files', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'token-optimization-repo-'));
-  const copilotDir = mkdtempSync(join(tmpdir(), 'token-optimization-copilot-'));
+  const root = mkdtempSync(join(tmpdir(), 'tokenlens-repo-'));
+  const copilotDir = mkdtempSync(join(tmpdir(), 'tokenlens-copilot-'));
   const db = new DatabaseSync(join(copilotDir, 'session-store.db'));
   db.exec(`
     CREATE TABLE sessions (id TEXT PRIMARY KEY, cwd TEXT, updated_at TEXT);
@@ -44,8 +44,8 @@ test('session provider returns task deltas and repo-relative files', async () =>
 });
 
 test('live session selection prefers an in-use lock', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'token-optimization-repo-'));
-  const copilotDir = mkdtempSync(join(tmpdir(), 'token-optimization-copilot-'));
+  const root = mkdtempSync(join(tmpdir(), 'tokenlens-repo-'));
+  const copilotDir = mkdtempSync(join(tmpdir(), 'tokenlens-copilot-'));
   const db = new DatabaseSync(join(copilotDir, 'session-store.db'));
   db.exec(`
     CREATE TABLE sessions (id TEXT PRIMARY KEY, cwd TEXT, updated_at TEXT);

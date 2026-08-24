@@ -1,4 +1,8 @@
-import { dirname, join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
 import * as vscode from 'vscode';
 import { TaskCommands } from './commands/taskCommands';
 import { getSetting } from './config';
@@ -12,93 +16,323 @@ import { LocalStore } from './services/localStore';
 import { Dashboard } from './views/dashboard';
 import { HistoryTreeProvider, SessionTreeProvider, TaskTreeProvider } from './views/treeProviders';
 
+const execFileAsync = promisify(execFile);
+
+interface ExtensionRuntime {
+  commands: TaskCommands;
+  dashboard: Dashboard;
+  live: LiveUsageService;
+  repositoryRoot: string;
+  session: SessionProvider;
+}
+
+interface ActivationState {
+  folder?: vscode.WorkspaceFolder;
+  issue?: string;
+  runtime?: ExtensionRuntime;
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (!folder) return;
-
-  const storageRoot = context.storageUri?.fsPath ?? join(context.globalStorageUri.fsPath, workspaceKey(folder.uri));
-  const storePath = join(storageRoot, 'tokenlens.json');
-  const legacyExtensionStorage = context.storageUri
-    ? join(dirname(storageRoot), 'token-optimization.token-optimization')
-    : join(dirname(context.globalStorageUri.fsPath), 'token-optimization.token-optimization', workspaceKey(folder.uri));
-  await LocalStore.migrate([
-    join(storageRoot, 'token-optimization.json'),
-    join(legacyExtensionStorage, 'token-optimization.json'),
-  ], storePath);
-  const store = new LocalStore(storePath);
-  await store.initialize();
-
-  const repositoryRoot = await GitProvider.discoverRoot(folder.uri.fsPath);
-  const git = new GitProvider(repositoryRoot);
-  const session = new SessionProvider(repositoryRoot);
-  const github = new GitHubProvider();
-  const live = new LiveUsageService(session, store);
-  const creditUsd = () => getSetting('creditUsd', 0.01);
-  const dashboard = new Dashboard(store, live, creditUsd);
+  const state: ActivationState = {};
+  const output = vscode.window.createOutputChannel('TokenLens');
   const appStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 91);
   appStatus.name = 'TokenLens';
+  appStatus.command = 'tokenLens.checkSetup';
   appStatus.show();
 
-  const sessionTree = new SessionTreeProvider(live, creditUsd);
-  const taskTree = new TaskTreeProvider(store, live);
-  const historyTree = new HistoryTreeProvider(store);
-  const refreshViews = () => {
-    sessionTree.refresh();
-    taskTree.refresh();
-    historyTree.refresh();
-    dashboard.refresh();
-    updateStatus(appStatus, live, store.activeTask() != null, creditUsd());
-  };
-  const commands = new TaskCommands(store, git, session, live, github, refreshViews);
-
   context.subscriptions.push(
-    live,
-    dashboard,
+    output,
     appStatus,
-    vscode.window.registerTreeDataProvider('tokenLens.session', sessionTree),
-    vscode.window.registerTreeDataProvider('tokenLens.task', taskTree),
-    vscode.window.registerTreeDataProvider('tokenLens.history', historyTree),
-    vscode.commands.registerCommand('tokenLens.startTask', () => commands.estimate(true)),
-    vscode.commands.registerCommand('tokenLens.estimateTask', () => commands.estimate(false)),
-    vscode.commands.registerCommand('tokenLens.completeTask', () => commands.complete()),
-    vscode.commands.registerCommand('tokenLens.syncTask', () => commands.sync()),
-    vscode.commands.registerCommand('tokenLens.refreshUsage', async () => {
-      await live.refresh();
-      refreshViews();
-      if (live.state.error) {
-        await vscode.window.showWarningMessage(`TokenLens: ${live.state.error}`);
-      }
-    }),
-    vscode.commands.registerCommand('tokenLens.openMetrics', () => dashboard.show()),
-    vscode.commands.registerCommand('tokenLens.showOptimizationTips', async () => {
-      const tips = optimizationTips(live);
-      const selected = await vscode.window.showQuickPick(tips, {
-        title: 'TokenLens Optimization Tips',
-        placeHolder: 'Evidence-based suggestions from the current session',
-        ignoreFocusOut: true,
-      });
-      if (selected?.detail) await vscode.window.showInformationMessage(selected.detail);
-    }),
-    vscode.commands.registerCommand('tokenLens.openHistory', async () => {
-      await vscode.commands.executeCommand('workbench.view.extension.tokenLens');
-      await vscode.commands.executeCommand('tokenLens.history.focus');
-    }),
-    vscode.commands.registerCommand('tokenLens.openSettings', () =>
-      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:minhnndev.tokenlens-for-copilot')),
-    ...registerLegacyCommandAliases(),
-    live.onDidChange(() => refreshViews()),
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('tokenLens.pollIntervalSeconds') || event.affectsConfiguration('tokenOptimization.pollIntervalSeconds')) live.restart();
-      if (event.affectsConfiguration('tokenLens.significantCacheDeltaTokens') || event.affectsConfiguration('tokenOptimization.significantCacheDeltaTokens')) live.resetCacheObserver();
-      if (event.affectsConfiguration('tokenLens') || event.affectsConfiguration('tokenOptimization')) refreshViews();
-    }),
+    ...registerUserCommands(state, output),
   );
 
-  updateStatus(appStatus, live, store.activeTask() != null, creditUsd());
-  live.start();
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  state.folder = folder;
+  if (!folder) {
+    state.issue = 'Open a filesystem workspace folder before starting a task.';
+    updateSetupStatus(appStatus, state.issue);
+    return;
+  }
+
+  try {
+    const storageRoot = context.storageUri?.fsPath ?? join(context.globalStorageUri.fsPath, workspaceKey(folder.uri));
+    const storePath = join(storageRoot, 'tokenlens.json');
+    const store = new LocalStore(storePath);
+    await store.initialize();
+
+    const repositoryRoot = await GitProvider.discoverRoot(folder.uri.fsPath);
+    const git = new GitProvider(repositoryRoot);
+    const session = new SessionProvider(repositoryRoot);
+    const github = new GitHubProvider();
+    const live = new LiveUsageService(session, store);
+    const creditUsd = () => getSetting('creditUsd', 0.01);
+    const dashboard = new Dashboard(store, live, creditUsd);
+
+    const sessionTree = new SessionTreeProvider(live, creditUsd);
+    const taskTree = new TaskTreeProvider(store, live);
+    const historyTree = new HistoryTreeProvider(store);
+    const refreshViews = () => {
+      sessionTree.refresh();
+      taskTree.refresh();
+      historyTree.refresh();
+      dashboard.refresh();
+      updateStatus(appStatus, live, store.activeTask() != null, creditUsd());
+    };
+    const commands = new TaskCommands(store, git, session, live, github, refreshViews);
+    state.runtime = { commands, dashboard, live, repositoryRoot, session };
+
+    context.subscriptions.push(
+      live,
+      dashboard,
+      vscode.window.registerTreeDataProvider('tokenLens.session', sessionTree),
+      vscode.window.registerTreeDataProvider('tokenLens.task', taskTree),
+      vscode.window.registerTreeDataProvider('tokenLens.history', historyTree),
+      live.onDidChange(() => refreshViews()),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('tokenLens.pollIntervalSeconds')) live.restart();
+        if (event.affectsConfiguration('tokenLens.significantCacheDeltaTokens')) live.resetCacheObserver();
+        if (event.affectsConfiguration('tokenLens')) refreshViews();
+      }),
+    );
+
+    updateStatus(appStatus, live, store.activeTask() != null, creditUsd());
+    live.start();
+    output.appendLine(`TokenLens activated for ${repositoryRoot}`);
+  } catch (error) {
+    state.runtime = undefined;
+    state.issue = `Initialization failed: ${errorMessage(error)}`;
+    output.appendLine(state.issue);
+    output.appendLine(errorStack(error));
+    updateSetupStatus(appStatus, state.issue);
+    const selection = await vscode.window.showErrorMessage(
+      `TokenLens could not initialize. ${errorMessage(error)}`,
+      'Check Setup',
+      'Show Logs',
+    );
+    if (selection === 'Check Setup') await vscode.commands.executeCommand('tokenLens.checkSetup');
+    if (selection === 'Show Logs') output.show(true);
+  }
 }
 
 export function deactivate(): void {}
+
+function registerUserCommands(
+  state: ActivationState,
+  output: vscode.OutputChannel,
+): vscode.Disposable[] {
+  return [
+    vscode.commands.registerCommand('tokenLens.startTask', () => runWithRuntime(
+      state,
+      output,
+      'Start Task',
+      (runtime) => runtime.commands.estimate(true),
+    )),
+    vscode.commands.registerCommand('tokenLens.estimateTask', () => runWithRuntime(
+      state,
+      output,
+      'Estimate Task',
+      (runtime) => runtime.commands.estimate(false),
+    )),
+    vscode.commands.registerCommand('tokenLens.completeTask', () => runWithRuntime(
+      state,
+      output,
+      'Complete Task',
+      (runtime) => runtime.commands.complete(),
+    )),
+    vscode.commands.registerCommand('tokenLens.syncTask', () => runWithRuntime(
+      state,
+      output,
+      'Sync Task',
+      (runtime) => runtime.commands.sync(),
+    )),
+    vscode.commands.registerCommand('tokenLens.refreshUsage', () => runWithRuntime(
+      state,
+      output,
+      'Refresh Usage',
+      async (runtime) => {
+        await runtime.live.refresh();
+        if (runtime.live.state.error) {
+          await vscode.window.showWarningMessage(
+            `TokenLens live metrics: ${runtime.live.state.error}`,
+            'Check Setup',
+          ).then((selection) => selection === 'Check Setup'
+            ? vscode.commands.executeCommand('tokenLens.checkSetup')
+            : undefined);
+        }
+      },
+    )),
+    vscode.commands.registerCommand('tokenLens.openMetrics', () => runWithRuntime(
+      state,
+      output,
+      'Open Metrics',
+      (runtime) => runtime.dashboard.show(),
+    )),
+    vscode.commands.registerCommand('tokenLens.showOptimizationTips', () => runWithRuntime(
+      state,
+      output,
+      'Optimization Tips',
+      async (runtime) => {
+        const tips = optimizationTips(runtime.live);
+        const selected = await vscode.window.showQuickPick(tips, {
+          title: 'TokenLens Optimization Tips',
+          placeHolder: 'Evidence-based suggestions from the current session',
+          ignoreFocusOut: true,
+        });
+        if (selected?.detail) await vscode.window.showInformationMessage(selected.detail);
+      },
+    )),
+    vscode.commands.registerCommand('tokenLens.openHistory', () => runWithRuntime(
+      state,
+      output,
+      'Open History',
+      async () => {
+        await vscode.commands.executeCommand('workbench.view.extension.tokenLens');
+        await vscode.commands.executeCommand('tokenLens.history.focus');
+      },
+    )),
+    vscode.commands.registerCommand('tokenLens.checkSetup', () => showSetupDiagnostics(state, output)),
+    vscode.commands.registerCommand('tokenLens.openSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', '@ext:minhnndev.tokenlens-for-copilot')),
+  ];
+}
+
+async function runWithRuntime(
+  state: ActivationState,
+  output: vscode.OutputChannel,
+  label: string,
+  action: (runtime: ExtensionRuntime) => void | Promise<unknown>,
+): Promise<void> {
+  if (!state.runtime) {
+    const reason = state.issue ?? 'TokenLens is still initializing.';
+    const selection = await vscode.window.showWarningMessage(
+      `TokenLens: ${reason}`,
+      'Check Setup',
+      'Show Logs',
+    );
+    if (selection === 'Check Setup') await vscode.commands.executeCommand('tokenLens.checkSetup');
+    if (selection === 'Show Logs') output.show(true);
+    return;
+  }
+  try {
+    await action(state.runtime);
+  } catch (error) {
+    output.appendLine(`${label} failed: ${errorMessage(error)}`);
+    output.appendLine(errorStack(error));
+    const selection = await vscode.window.showErrorMessage(
+      `TokenLens: ${label} failed. ${errorMessage(error)}`,
+      'Check Setup',
+      'Show Logs',
+    );
+    if (selection === 'Check Setup') await vscode.commands.executeCommand('tokenLens.checkSetup');
+    if (selection === 'Show Logs') output.show(true);
+  }
+}
+
+async function showSetupDiagnostics(
+  state: ActivationState,
+  output: vscode.OutputChannel,
+): Promise<void> {
+  const folder = state.folder ?? vscode.workspace.workspaceFolders?.[0];
+  const dbPath = join(homedir(), '.copilot', 'session-store.db');
+  const remoteName = vscode.env.remoteName;
+  const gitVersion = await executableVersion('git', ['--version']);
+  const copilotVersion = await executableVersion('copilot', ['--version']);
+  let sqliteAvailable = true;
+  try {
+    await import('node:sqlite');
+  } catch {
+    sqliteAvailable = false;
+  }
+
+  let repositoryRoot = state.runtime?.repositoryRoot;
+  if (!repositoryRoot && folder) repositoryRoot = await GitProvider.discoverRoot(folder.uri.fsPath);
+  let matchingSession = false;
+  let sessionError: string | undefined;
+  if (repositoryRoot && existsSync(dbPath) && sqliteAvailable) {
+    try {
+      const provider = state.runtime?.session ?? new SessionProvider(repositoryRoot);
+      matchingSession = await provider.currentCursor() != null;
+    } catch (error) {
+      sessionError = errorMessage(error);
+    }
+  }
+
+  const taskReady = state.runtime != null;
+  const liveReady = taskReady && existsSync(dbPath) && sqliteAvailable && matchingSession && !sessionError;
+  const lines = [
+    '',
+    `TokenLens setup check — ${new Date().toLocaleString()}`,
+    '────────────────────────────────────────',
+    diagnosticLine(folder != null, 'Workspace folder', folder?.uri.toString() ?? 'not open'),
+    diagnosticLine(vscode.workspace.isTrusted, 'Workspace trust', vscode.workspace.isTrusted ? 'trusted' : 'Restricted Mode'),
+    diagnosticLine(folder != null && (folder.uri.scheme === 'file' || remoteName != null), 'Filesystem workspace', folder?.uri.scheme ?? 'none'),
+    diagnosticLine(state.runtime != null, 'Extension runtime', state.runtime ? 'initialized' : state.issue ?? 'not initialized'),
+    diagnosticLine(gitVersion != null, 'Git', gitVersion ?? 'not found in the extension host PATH'),
+    diagnosticLine(sqliteAvailable, 'SQLite support', sqliteAvailable ? `available · Node ${process.versions.node}` : `node:sqlite unavailable · Node ${process.versions.node}`),
+    diagnosticLine(copilotVersion != null, 'Copilot CLI', copilotVersion ?? 'command not found in the extension host PATH'),
+    diagnosticLine(existsSync(dbPath), 'Copilot session store', existsSync(dbPath) ? dbPath : `not found at ${dbPath}`),
+    diagnosticLine(matchingSession, 'Matching Copilot session', matchingSession ? repositoryRoot ?? 'found' : sessionError ?? `none for ${repositoryRoot ?? 'this workspace'}`),
+    '',
+    `VS Code: ${vscode.version}`,
+    `Extension host: ${remoteName ? `remote (${remoteName})` : 'local'}`,
+    `Repository root: ${repositoryRoot ?? 'unavailable'}`,
+    `Task workflow: ${taskReady ? 'READY' : 'BLOCKED'}`,
+    `Live metrics: ${liveReady ? 'READY' : 'WAITING'}`,
+  ];
+  if (remoteName) {
+    lines.push('', `Note: Copilot CLI and ${dbPath} must exist on the ${remoteName} host, not only on the local device.`);
+  }
+  if (!existsSync(dbPath) || !matchingSession) {
+    lines.push('', 'To enable live metrics, start Copilot CLI inside this repository and complete at least one request. Installing the CLI alone does not create a matching session.');
+  }
+  output.appendLine(lines.join('\n'));
+
+  const summary = taskReady
+    ? liveReady
+      ? 'TokenLens task workflow and live metrics are ready.'
+      : 'TokenLens task workflow is ready. Live metrics still need a matching Copilot CLI session.'
+    : `TokenLens task workflow is blocked. ${state.issue ?? 'See setup details.'}`;
+  const show = taskReady && liveReady
+    ? vscode.window.showInformationMessage(summary, 'Show Details')
+    : vscode.window.showWarningMessage(summary, 'Show Details');
+  if (await show === 'Show Details') output.show(true);
+}
+
+async function executableVersion(command: string, args: string[]): Promise<string | undefined> {
+  try {
+    const { stdout, stderr } = await execFileAsync(command, args, {
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+    return String(stdout || stderr).trim() || 'available';
+  } catch {
+    return undefined;
+  }
+}
+
+function diagnosticLine(ok: boolean, label: string, detail: string): string {
+  return `${ok ? '✓' : '⚠'} ${label}: ${detail}`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function errorStack(error: unknown): string {
+  return error instanceof Error && error.stack ? error.stack : String(error);
+}
+
+function updateSetupStatus(status: vscode.StatusBarItem, issue: string): void {
+  status.text = '$(warning) AI · Setup';
+  status.command = 'tokenLens.checkSetup';
+  status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+  const tooltip = new vscode.MarkdownString();
+  configureTooltip(tooltip);
+  tooltip.appendMarkdown('**TokenLens setup required**\n\n');
+  tooltip.appendText(issue);
+  tooltip.appendMarkdown('\n\n[$(tools) Check Setup](command:tokenLens.checkSetup)');
+  status.tooltip = tooltip;
+}
 
 function updateStatus(
   status: vscode.StatusBarItem,
@@ -106,6 +340,7 @@ function updateStatus(
   activeTask: boolean,
   creditUsd: number,
 ): void {
+  status.command = 'tokenLens.openMetrics';
   const context = liveTooltipContext(live, activeTask, creditUsd);
   if (context) {
     const warning = isOptimizationWarning(context.latestCache?.transition, context.currentReuse);
@@ -127,6 +362,7 @@ function updateStatus(
     tooltip.appendText(live.state.error);
     tooltip.appendMarkdown(
       '\n\n[$(refresh) Refresh](command:tokenLens.refreshUsage)  ' +
+      '[$(tools) Check Setup](command:tokenLens.checkSetup)  ' +
       '[$(graph-line) Open Metrics](command:tokenLens.openMetrics)',
     );
     status.tooltip = tooltip;
@@ -475,29 +711,11 @@ function configureTooltip(tooltip: vscode.MarkdownString): void {
       'tokenLens.openHistory',
       'tokenLens.refreshUsage',
       'tokenLens.showOptimizationTips',
+      'tokenLens.checkSetup',
     ],
   };
 }
 
 function workspaceKey(uri: vscode.Uri): string {
   return Buffer.from(uri.toString()).toString('base64url').slice(0, 32);
-}
-
-function registerLegacyCommandAliases(): vscode.Disposable[] {
-  const aliases: Array<[string, string]> = [
-    ['tokenOptimization.startTask', 'tokenLens.startTask'],
-    ['tokenOptimization.estimateTask', 'tokenLens.estimateTask'],
-    ['tokenOptimization.completeTask', 'tokenLens.completeTask'],
-    ['tokenOptimization.syncTask', 'tokenLens.syncTask'],
-    ['tokenOptimization.refreshUsage', 'tokenLens.refreshUsage'],
-    ['tokenOptimization.openSettings', 'tokenLens.openSettings'],
-    ['tokenOptimization.showUsagePopup', 'tokenLens.openMetrics'],
-    ['tokenOptimization.showDashboard', 'tokenLens.openMetrics'],
-    ['tokenLens.showUsagePopup', 'tokenLens.openMetrics'],
-    ['tokenLens.showDashboard', 'tokenLens.openMetrics'],
-  ];
-  return aliases.map(([legacy, current]) => vscode.commands.registerCommand(
-    legacy,
-    (...args: unknown[]) => vscode.commands.executeCommand(current, ...args),
-  ));
 }

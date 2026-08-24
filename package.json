@@ -2,7 +2,7 @@
   "name": "tokenlens-for-copilot",
   "displayName": "TokenLens for GitHub Copilot",
   "description": "Local-first AI credit sizing, Copilot CLI usage, cache continuity, and GitHub calibration for VS Code.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "minhnndev",
   "license": "MIT",
   "repository": {
@@ -47,8 +47,8 @@
     "watch": "tsc -watch -p ./",
     "lint": "tsc -p ./ --noEmit",
     "test:core": "npm run compile && node --test dist/test/*.test.js",
-    "test:legacy": "node --test scripts/test/*.test.mjs plugins/cache-continuity/test/*.test.mjs console/test/*.test.mjs",
-    "test": "npm run test:core && npm run test:legacy",
+    "test:workshop": "node --test scripts/test/*.test.mjs plugins/cache-continuity/test/*.test.mjs console/test/*.test.mjs",
+    "test": "npm run test:core && npm run test:workshop",
     "package": "vsce package --no-dependencies",
     "vscode:prepublish": "npm run compile"
   },
@@ -98,6 +98,11 @@
         "command": "tokenLens.openSettings",
         "title": "TokenLens: Open Settings",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "tokenLens.checkSetup",
+        "title": "TokenLens: Check Setup",
+        "icon": "$(tools)"
       }
     ],
     "viewsContainers": {
@@ -128,7 +133,7 @@
     "viewsWelcome": [
       {
         "view": "tokenLens.session",
-        "contents": "No Copilot CLI usage found for this workspace.\n[Refresh usage](command:tokenLens.refreshUsage)"
+        "contents": "No Copilot CLI usage found for this workspace.\n[Refresh usage](command:tokenLens.refreshUsage) · [Check setup](command:tokenLens.checkSetup)"
       },
       {
         "view": "tokenLens.task",

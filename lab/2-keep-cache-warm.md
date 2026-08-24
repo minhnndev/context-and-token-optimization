@@ -10,7 +10,7 @@ Exit Copilot CLI if it is still open. From your repository root:
 
 ```bash
 copilot plugin marketplace add .
-copilot plugin install cache-continuity@token-optimization-workshop
+copilot plugin install cache-continuity@tokenlens-workshop
 copilot --experimental --model gpt-5.4-mini --effort low --max-ai-credits 30
 ```
 

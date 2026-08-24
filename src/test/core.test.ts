@@ -44,7 +44,7 @@ test('similar completed tasks influence the estimate and appear as analogues', (
   assert.ok(estimate.expectedCredits > 20);
 });
 
-test('usage markers stay backward compatible', () => {
+test('usage markers use the TokenLens calibration contract', () => {
   const marker = buildMarker({ bucket: 'M', actual: 42.7, verdict: 'on-target' });
   assert.deepEqual(extractMarker(marker), { bucket: 'M', actual: 42.7, verdict: 'on-target' });
   assert.equal(extractMarker(buildMarker({ size: 'S' }, 'ai-estimate')), null);

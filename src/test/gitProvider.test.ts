@@ -7,7 +7,7 @@ import test from 'node:test';
 import { GitProvider } from '../providers/gitProvider';
 
 test('Git provider inventories individual untracked files and modules', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'token-optimization-git-'));
+  const root = mkdtempSync(join(tmpdir(), 'tokenlens-git-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: root });
   execFileSync('git', ['config', 'user.name', 'Test'], { cwd: root });

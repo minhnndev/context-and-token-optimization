@@ -13,7 +13,7 @@
 // (title + rationale + which files each task touched, next to estimate/actual)
 // so an estimator never has to read issue threads itself. Per-model token
 // counts stay out of it — an estimator never needs them, and this is a
-// token-optimization workshop.
+// TokenLens workshop.
 import { ghJson, representativeMarker, fmtRange, parseBucket, parseRationale, parseArgs } from './lib.mjs';
 
 const args = parseArgs(process.argv.slice(2), { json: 'boolean' });

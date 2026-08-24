@@ -6,7 +6,7 @@
     "name": "karolmckgh",
     "url": "https://github.com/karolmckgh"
   },
-  "repository": "https://github.com/karolmckgh/github-copilot-token-optimization",
+  "repository": "https://github.com/minhnndev/context-and-token-optimization",
   "license": "MIT",
   "keywords": ["cache", "tokens", "cost", "copilot-cli"],
   "extensions": "extensions"
